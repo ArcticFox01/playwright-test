@@ -1,0 +1,207 @@
+name: Petstore API Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/tests/api/petstore/**'
+      - 'src/utils/api/petstore.ts'
+      - 'src/testData/petstore/**'
+      - '.github/workflows/petstore-ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'src/tests/api/petstore/**'
+      - 'src/utils/api/petstore.ts'
+      - 'src/testData/petstore/**'
+      - '.github/workflows/petstore-ci.yml'
+  schedule:
+    # Run Petstore tests every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - pet
+          - store
+          - users
+      browser:
+        description: 'Browser to run tests on'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - all
+
+jobs:
+  petstore-tests:
+    name: Petstore API - ${{ matrix.browser }} (${{ matrix.node-version }})
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+        browser: [chromium, firefox, webkit]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Petstore Tests
+        env:
+          CI: true
+          PETSTORE_BASE_URL: ${{ secrets.PETSTORE_BASE_URL || 'https://petstore.swagger.io/v2' }}
+          PETSTORE_API_KEY: ${{ secrets.PETSTORE_API_KEY }}
+        run: |
+          TEST_PATH="src/tests/api/petstore/"
+
+          if [ "${{ github.event.inputs.test_type }}" = "pet" ]; then
+            TEST_PATH="src/tests/api/petstore/pet.api.spec.ts"
+          elif [ "${{ github.event.inputs.test_type }}" = "store" ]; then
+            TEST_PATH="src/tests/api/petstore/store.api.spec.ts"
+          elif [ "${{ github.event.inputs.test_type }}" = "users" ]; then
+            TEST_PATH="src/tests/api/petstore/user.api.spec.ts"
+          fi
+
+          npx playwright test $TEST_PATH --project=${{ matrix.browser }}
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: petstore-results-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 15
+
+      - name: Upload HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: petstore-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/index.html
+          retention-days: 15
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate || true
+
+      - name: Run dependency check
+        run: |
+          if command -v snyk &> /dev/null; then
+            snyk test --severity-threshold=high || true
+          else
+            echo "Snyk not installed, skipping dependency scan"
+          fi
+
+  api-health-check:
+    name: API Health Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run API Health Checks
+        env:
+          CI: true
+          PETSTORE_BASE_URL: ${{ secrets.PETSTORE_BASE_URL || 'https://petstore.swagger.io/v2' }}
+        run: |
+          # Run only basic connectivity tests
+          npx playwright test src/tests/api/petstore/ --grep "inventory" --project=chromium || true
+
+      - name: Check API Response Times
+        run: |
+          echo "Checking API response times..."
+          curl -w "@curl-format.txt" -o /dev/null -s "https://petstore.swagger.io/v2/store/inventory" || echo " curl-format.txt not found, skipping detailed timing"
+
+  notify-results:
+    name: Notify Results
+    needs: [petstore-tests, security-scan, api-health-check]
+    if: always() && (needs.petstore-tests.result == 'failure' || needs.security-scan.result == 'failure' || needs.api-health-check.result == 'failure')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify on Failure
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="🚨 Petstore API Tests Failed!"
+          if [ "${{ needs.petstore-tests.result }}" = "failure" ]; then
+            MESSAGE="$MESSAGE\n- Test suite failed"
+          fi
+          if [ "${{ needs.security-scan.result }}" = "failure" ]; then
+            MESSAGE="$MESSAGE\n- Security scan found issues"
+          fi
+          if [ "${{ needs.api-health-check.result }}" = "failure" ]; then
+            MESSAGE="$MESSAGE\n- API health check failed"
+          fi
+          MESSAGE="$MESSAGE\n\nRepository: ${{ github.repository }}\nCommit: ${{ github.sha }}\nView details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # Slack notification
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$MESSAGE\"}" \
+              "$SLACK_WEBHOOK_URL" || true
+          fi
+
+          # Discord notification
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"content\":\"$MESSAGE\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi

@@ -1,0 +1,12 @@
+{
+    "baseUrl": "https://petstore.swagger.io/v2",
+    "timeout": 60000,
+    "retryOptions": {
+        "maxRetries": 5,
+        "interval": 1000
+    },
+    "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+}

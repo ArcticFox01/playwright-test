@@ -1,0 +1,33 @@
+{
+  "name": "playwright_test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test src/tests/api/petstore/",
+    "test:headed": "playwright test src/tests/api/petstore/ --headed",
+    "test:debug": "playwright test src/tests/api/petstore/ --debug",
+    "test:ui": "playwright test src/tests/api/petstore/ --ui",
+    "test:report": "playwright show-report",
+    "test:all": "playwright test",
+    "test:petstore": "playwright test src/tests/api/petstore/",
+    "test:pet": "playwright test src/tests/api/petstore/pet.api.spec.ts",
+    "test:store": "playwright test src/tests/api/petstore/store.api.spec.ts",
+    "test:users": "playwright test src/tests/api/petstore/user.api.spec.ts",
+    "install:browsers": "playwright install --with-deps",
+    "lint": "eslint src/ --ext .ts,.js",
+    "lint:fix": "eslint src/ --ext .ts,.js --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "type-check": "tsc --noEmit",
+    "ci": "npm ci && npm run install:browsers && npm run test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "@types/node": "^24.5.2",
+    "ajv": "^8.17.1"
+  }
+}

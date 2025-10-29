@@ -1,0 +1,18 @@
+{
+    "pet": {
+        "name": "TestDog",
+        "category": {
+            "id": 1,
+            "name": "Dogs"
+        },
+        "photoUrls": ["http://example.com/dog.jpg"],
+        "tags": [
+            {
+                "id": 1,
+                "name": "friendly"
+            }
+        ],
+        "status": "available"
+    },
+    "updatedStatus": "pending"
+}

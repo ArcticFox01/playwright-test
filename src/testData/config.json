@@ -1,0 +1,14 @@
+{
+    "api": {
+        "baseUrl": "https://petstore.swagger.io/v2",
+        "timeout": 30000,
+        "retryOptions": {
+            "maxRetries": 3,
+            "interval": 2000
+        }
+    },
+    "test": {
+        "retryTestOnFailure": true,
+        "maxFailures": 1
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "user": {
+        "firstName": "Test",
+        "lastName": "User",
+        "email": "testuser@example.com",
+        "password": "password123",
+        "phone": "1234567890",
+        "userStatus": 1
+    },
+    "updatedEmail": "updated@example.com",
+    "multipleUsers": [
+        {
+            "firstName": "Test1",
+            "lastName": "User1",
+            "email": "testuser1@example.com",
+            "password": "password123",
+            "phone": "1234567890",
+            "userStatus": 1
+        },
+        {
+            "firstName": "Test2",
+            "lastName": "User2",
+            "email": "testuser2@example.com",
+            "password": "password123",
+            "phone": "1234567890",
+            "userStatus": 1
+        }
+    ]
+}

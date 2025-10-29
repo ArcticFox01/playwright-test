@@ -1,0 +1,180 @@
+name: Playwright Tests
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: "0 2 * * *"
+
+jobs:
+  test:
+    name: Run Playwright Tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # Run tests on multiple Node.js versions
+        node-version: [18, 20]
+        # Run tests on multiple browsers
+        browser: [chromium, firefox, webkit]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Playwright tests
+        env:
+          # Set environment variables for CI
+          CI: true
+          # Add any other environment variables your tests need
+          # BASE_URL: ${{ secrets.BASE_URL }}
+          # API_KEY: ${{ secrets.API_KEY }}
+        run: npx playwright test src/tests/api/petstore/ --project=${{ matrix.browser }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 30
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/index.html
+          retention-days: 30
+
+  # Job to run tests on mobile viewports
+  test-mobile:
+    name: Run Mobile Tests
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mobile tests
+        env:
+          CI: true
+        run: |
+          # Note: This assumes you have mobile projects configured in your playwright.config.ts
+          # You'll need to uncomment the mobile projects in your config file
+          npx playwright test src/tests/api/petstore/ --project="Mobile Chrome" --project="Mobile Safari" || true
+
+      - name: Upload mobile test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-test-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  # Job to check code quality
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint (if configured)
+        run: |
+          if [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || grep -q "eslint" package.json; then
+            npx eslint src/ --ext .ts,.js || true
+          else
+            echo "ESLint not configured"
+          fi
+
+      - name: Run Prettier check (if configured)
+        run: |
+          if [ -f ".prettierrc" ] || [ -f ".prettierrc.json" ] || grep -q "prettier" package.json; then
+            npx prettier --check src/ || true
+          else
+            echo "Prettier not configured"
+          fi
+
+      - name: TypeScript type check
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit || true
+          else
+            echo "TypeScript config not found"
+          fi
+
+  # Job to notify on failure (optional)
+  notify:
+    name: Notify on Failure
+    needs: [test, test-mobile, lint]
+    if: failure() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify on Slack (if configured)
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"❌ Playwright tests failed on ${{ github.repository }} - ${{ github.sha }}"}' \
+            $SLACK_WEBHOOK_URL || true
+
+      - name: Notify on Discord (if configured)
+        if: env.DISCORD_WEBHOOK_URL != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"content":"❌ Playwright tests failed on ${{ github.repository }} - Commit: ${{ github.sha }}"}' \
+            $DISCORD_WEBHOOK_URL || true
