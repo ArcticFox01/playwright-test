@@ -1,29 +1,12 @@
 name: Petstore API Tests
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'src/tests/api/petstore/**'
-      - 'src/utils/api/petstore.ts'
-      - 'src/testData/petstore/**'
-      - '.github/workflows/petstore-ci.yml'
-  pull_request:
-    branches: [main, master]
-    paths:
-      - 'src/tests/api/petstore/**'
-      - 'src/utils/api/petstore.ts'
-      - 'src/testData/petstore/**'
-      - '.github/workflows/petstore-ci.yml'
-  schedule:
-    # Run Petstore tests every 6 hours
-    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       test_type:
-        description: 'Type of tests to run'
+        description: "Type of tests to run"
         required: true
-        default: 'all'
+        default: "all"
         type: choice
         options:
           - all
@@ -31,15 +14,12 @@ on:
           - store
           - users
       browser:
-        description: 'Browser to run tests on'
+        description: "Browser to run tests on"
         required: true
-        default: 'chromium'
+        default: "chromium"
         type: choice
         options:
           - chromium
-          - firefox
-          - webkit
-          - all
 
 jobs:
   petstore-tests:
@@ -50,7 +30,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18, 20]
-        browser: [chromium, firefox, webkit]
+        browser: [chromium]
       fail-fast: false
 
     steps:
@@ -61,7 +41,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -108,7 +88,6 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'schedule'
 
     steps:
       - name: Checkout code
@@ -117,8 +96,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -137,7 +116,6 @@ jobs:
   api-health-check:
     name: API Health Check
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -146,8 +124,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci

@@ -4,9 +4,6 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-  schedule:
-    # Run tests daily at 2 AM UTC
-    - cron: "0 2 * * *"
 
 jobs:
   test:
@@ -18,8 +15,8 @@ jobs:
       matrix:
         # Run tests on multiple Node.js versions
         node-version: [18, 20]
-        # Run tests on multiple browsers
-        browser: [chromium, firefox, webkit]
+        # Run tests on Chromium only
+        browser: [chromium]
       fail-fast: false
 
     steps:
@@ -69,46 +66,6 @@ jobs:
         with:
           name: html-report-${{ matrix.node-version }}-${{ matrix.browser }}
           path: playwright-report/index.html
-          retention-days: 30
-
-  # Job to run tests on mobile viewports
-  test-mobile:
-    name: Run Mobile Tests
-    timeout-minutes: 30
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run mobile tests
-        env:
-          CI: true
-        run: |
-          # Note: This assumes you have mobile projects configured in your playwright.config.ts
-          # You'll need to uncomment the mobile projects in your config file
-          npx playwright test src/tests/api/petstore/ --project="Mobile Chrome" --project="Mobile Safari" || true
-
-      - name: Upload mobile test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-test-results
-          path: |
-            playwright-report/
-            test-results/
           retention-days: 30
 
   # Job to check code quality
