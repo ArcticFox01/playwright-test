@@ -1,0 +1,199 @@
+name: Pages Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Choose which page tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - login
+          - search
+      browser:
+        description: 'Choose browser'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+          - local
+
+jobs:
+  login-tests:
+    name: Login Page Tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'login'
+
+    strategy:
+      matrix:
+        node-version: [20]
+        browser: [${{ github.event.inputs.browser || 'chromium' }}]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Login Tests
+        env:
+          CI: true
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+        run: npx playwright test src/tests/login.spec.ts --project=${{ matrix.browser }} --headed=false
+
+      - name: Upload Login Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-test-results-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload Login Test Traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-test-traces-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 30
+
+  search-tests:
+    name: Search Page Tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'search'
+
+    strategy:
+      matrix:
+        node-version: [20]
+        browser: [${{ github.event.inputs.browser || 'chromium' }}]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Search Tests
+        env:
+          CI: true
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+        run: npx playwright test src/tests/search.spec.ts --project=${{ matrix.browser }} --headed=false
+
+      - name: Upload Search Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-test-results-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload Search Test Traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-test-traces-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 30
+
+  combined-report:
+    name: Generate Combined Report
+    runs-on: ubuntu-latest
+    needs: [login-tests, search-tests]
+    if: always() && github.event.inputs.test_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate Combined Report
+        run: |
+          echo "# Pages Test Report" > combined-report.md
+          echo "" >> combined-report.md
+          echo "## Test Summary" >> combined-report.md
+          echo "- Browser: ${{ github.event.inputs.browser }}" >> combined-report.md
+          echo "- Environment: ${{ github.event.inputs.environment }}" >> combined-report.md
+          echo "- Date: $(date)" >> combined-report.md
+          echo "" >> combined-report.md
+          echo "## Test Results" >> combined-report.md
+
+          if [ -d "login-test-results-20-chromium" ]; then
+            echo "### Login Tests: ✅ Completed" >> combined-report.md
+          else
+            echo "### Login Tests: ❌ Not Found" >> combined-report.md
+          fi
+
+          if [ -d "search-test-results-20-chromium" ]; then
+            echo "### Search Tests: ✅ Completed" >> combined-report.md
+          else
+            echo "### Search Tests: ❌ Not Found" >> combined-report.md
+          fi
+
+      - name: Upload Combined Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-test-combined-report
+          path: combined-report.md
+          retention-days: 30
+
+  notify:
+    name: Notification on Failure
+    needs: [login-tests, search-tests]
+    if: failure() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify on Failure
+        run: |
+          echo "❌ Pages tests failed!"
+          echo "Test Type: ${{ github.event.inputs.test_type }}"
+          echo "Browser: ${{ github.event.inputs.browser }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Workflow: ${{ github.workflow }}"
