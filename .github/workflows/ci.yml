@@ -18,8 +18,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -37,19 +37,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
-```
-
-This workflow will:
-1. Trigger on push and pull requests to main/master branches
-2. Set up Node.js 20 with npm caching
-3. Install dependencies using `npm ci`
-4. Install Playwright browsers with system dependencies
-5. Run all Playwright tests
-6. Upload test reports as artifacts for 30 days
-
-To enable this pipeline:
-1. Push the `.github/workflows/ci.yml` file to your repository
-2. Make sure your repository has GitHub Actions enabled
-3. The pipeline will automatically run on the next push or PR
-
-If you need to add environment variables for your tests, you can store them in GitHub Secrets and reference them in the workflow like `${{ secrets.YOUR_SECRET_NAME }}`.
