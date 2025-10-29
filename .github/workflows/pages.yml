@@ -58,11 +58,14 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Install XVFB
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Run Login Tests
         env:
           CI: true
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-        run: npx playwright test src/tests/login.spec.ts --project=chromium --headed
+        run: xvfb-run npx playwright test src/tests/login.spec.ts --project=chromium --headed
 
       - name: Upload Login Test Results
         if: always()
@@ -108,11 +111,14 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Install XVFB
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Run Search Tests
         env:
           CI: true
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-        run: npx playwright test src/tests/search.spec.ts --project=chromium --headed
+        run: xvfb-run npx playwright test src/tests/search.spec.ts --project=chromium --headed
 
       - name: Upload Search Test Results
         if: always()
