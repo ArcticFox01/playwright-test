@@ -34,7 +34,7 @@ jobs:
     name: Login Page Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'login'
+    if: (github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'login') && github.event_name == 'workflow_dispatch'
 
     strategy:
       matrix:
@@ -84,7 +84,7 @@ jobs:
     name: Search Page Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'search'
+    if: (github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'search') && github.event_name == 'workflow_dispatch'
 
     strategy:
       matrix:
@@ -134,7 +134,7 @@ jobs:
     name: Generate Combined Report
     runs-on: ubuntu-latest
     needs: [login-tests, search-tests]
-    if: always() && github.event.inputs.test_type == 'all'
+    if: always() && github.event.inputs.test_type == 'all' && github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
