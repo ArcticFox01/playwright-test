@@ -62,7 +62,7 @@ jobs:
         env:
           CI: true
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-        run: npx playwright test src/tests/login.spec.ts --project=chromium --headed=false
+        run: npx playwright test src/tests/login.spec.ts --project=chromium
 
       - name: Upload Login Test Results
         if: always()
@@ -112,7 +112,7 @@ jobs:
         env:
           CI: true
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-        run: npx playwright test src/tests/search.spec.ts --project=chromium --headed=false
+        run: npx playwright test src/tests/search.spec.ts --project=chromium
 
       - name: Upload Search Test Results
         if: always()
