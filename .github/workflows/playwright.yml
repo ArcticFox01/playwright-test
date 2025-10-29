@@ -5,9 +5,75 @@ on:
   pull_request:
     branches: [main, master]
 
+# This workflow runs both API tests and page/UI tests in separate jobs
+
 jobs:
   test:
-    name: Run Playwright Tests
+    name: Run API Tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # Run tests on multiple Node.js versions
+        node-version: [18, 20]
+        # Run API tests on Chromium only
+        browser: [chromium]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Playwright tests
+        env:
+          # Set environment variables for CI
+          CI: true
+          # Add any other environment variables your tests need
+          # BASE_URL: ${{ secrets.BASE_URL }}
+          # API_KEY: ${{ secrets.API_KEY }}
+        # Run API tests from the petstore directory
+        run: npx playwright test src/tests/api/petstore/ --project=${{ matrix.browser }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 30
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          path: playwright-report/index.html
+          retention-days: 30
+
+  # Job to run page/UI tests with Chrome
+  test-ui:
+    name: Run Page Tests with Chrome
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
@@ -35,36 +101,37 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Run Playwright tests
+      - name: Run Playwright UI tests
         env:
           # Set environment variables for CI
           CI: true
           # Add any other environment variables your tests need
           # BASE_URL: ${{ secrets.BASE_URL }}
           # API_KEY: ${{ secrets.API_KEY }}
-        run: npx playwright test src/tests/api/petstore/ --project=${{ matrix.browser }}
+        # Run all page/UI tests, excluding API tests
+        run: npx playwright test src/tests/ --ignore="src/tests/api/" --project=${{ matrix.browser }}
 
-      - name: Upload test results
+      - name: Upload UI test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          name: playwright-ui-report-${{ matrix.node-version }}-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 30
 
-      - name: Upload test traces
+      - name: Upload UI test traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces-${{ matrix.node-version }}-${{ matrix.browser }}
+          name: playwright-ui-traces-${{ matrix.node-version }}-${{ matrix.browser }}
           path: test-results/
           retention-days: 30
 
-      - name: Upload HTML report
+      - name: Upload UI HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: html-report-${{ matrix.node-version }}-${{ matrix.browser }}
+          name: playwright-ui-html-report-${{ matrix.node-version }}-${{ matrix.browser }}
           path: playwright-report/index.html
           retention-days: 30
 
@@ -113,7 +180,7 @@ jobs:
   # Job to notify on failure (optional)
   notify:
     name: Notify on Failure
-    needs: [test, test-mobile, lint]
+    needs: [test, test-ui, lint]
     if: failure() && github.event_name == 'push'
     runs-on: ubuntu-latest
 

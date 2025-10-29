@@ -7,6 +7,8 @@
     "test:headed": "playwright test src/tests/api/petstore/ --headed",
     "test:debug": "playwright test src/tests/api/petstore/ --debug",
     "test:ui": "playwright test src/tests/api/petstore/ --ui",
+    "test:ui-page": "playwright test src/tests/ --ignore=\"src/tests/api/\" --ui",
+    "test:page": "playwright test src/tests/ --ignore=\"src/tests/api/\"",
     "test:report": "playwright show-report",
     "test:all": "playwright test",
     "test:petstore": "playwright test src/tests/api/petstore/",
