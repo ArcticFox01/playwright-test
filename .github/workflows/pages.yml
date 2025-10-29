@@ -4,25 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       test_type:
-        description: 'Choose which page tests to run'
+        description: "Choose which page tests to run"
         required: true
-        default: 'all'
+        default: "all"
         type: choice
         options:
           - all
           - login
           - search
       browser:
-        description: 'Choose browser'
+        description: "Choose browser"
         required: true
-        default: 'chromium'
+        default: "chromium"
         type: choice
         options:
           - chromium
       environment:
-        description: 'Target environment'
+        description: "Target environment"
         required: true
-        default: 'staging'
+        default: "staging"
         type: choice
         options:
           - staging
@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         node-version: [20]
-        browser: [${{ github.event.inputs.browser || 'chromium' }}]
+        browser: [chromium]
       fail-fast: false
 
     steps:
@@ -56,13 +56,13 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: npx playwright install --with-deps chromium
 
       - name: Run Login Tests
         env:
           CI: true
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-        run: npx playwright test src/tests/login.spec.ts --project=${{ matrix.browser }} --headed=false
+        run: npx playwright test src/tests/login.spec.ts --project=chromium --headed=false
 
       - name: Upload Login Test Results
         if: always()
@@ -89,7 +89,7 @@ jobs:
     strategy:
       matrix:
         node-version: [20]
-        browser: [${{ github.event.inputs.browser || 'chromium' }}]
+        browser: [chromium]
       fail-fast: false
 
     steps:
@@ -106,13 +106,13 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: npx playwright install --with-deps chromium
 
       - name: Run Search Tests
         env:
           CI: true
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-        run: npx playwright test src/tests/search.spec.ts --project=${{ matrix.browser }} --headed=false
+        run: npx playwright test src/tests/search.spec.ts --project=chromium --headed=false
 
       - name: Upload Search Test Results
         if: always()
