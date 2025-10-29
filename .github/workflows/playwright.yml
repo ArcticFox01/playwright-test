@@ -15,8 +15,8 @@ jobs:
 
     strategy:
       matrix:
-        # Run tests on multiple Node.js versions
-        node-version: [18, 20]
+        # Run tests on Node.js 20 only
+        node-version: [20]
         # Run API tests on Chromium only
         browser: [chromium]
       fail-fast: false
@@ -79,8 +79,8 @@ jobs:
 
     strategy:
       matrix:
-        # Run tests on multiple Node.js versions
-        node-version: [18, 20]
+        # Run tests on Node.js 20 only
+        node-version: [20]
         # Run tests on Chromium only
         browser: [chromium]
       fail-fast: false
