@@ -42,7 +42,7 @@ jobs:
           # BASE_URL: ${{ secrets.BASE_URL }}
           # API_KEY: ${{ secrets.API_KEY }}
         # Run API tests from the petstore directory
-        run: npx playwright test src/tests/api/petstore/ --project=${{ matrix.browser }}
+        run: npx playwright test src/tests/api/petstore/ --project=${{ matrix.browser }} --headed=false
 
       - name: Upload test results
         if: always()
@@ -106,7 +106,7 @@ jobs:
           # BASE_URL: ${{ secrets.BASE_URL }}
           # API_KEY: ${{ secrets.API_KEY }}
         # Run all page/UI tests, excluding API tests
-        run: npx playwright test src/tests/google.spec.ts src/tests/login.spec.ts src/tests/search.spec.ts --project=${{ matrix.browser }}
+        run: npx playwright test src/tests/google.spec.ts src/tests/login.spec.ts src/tests/search.spec.ts --project=${{ matrix.browser }} --headed=false
 
       - name: Upload UI test results
         if: always()
