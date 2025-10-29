@@ -1,6 +1,24 @@
 name: Playwright Tests
 on:
   workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Choose which tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - api
+          - ui
+          - lint
+      browser:
+        description: 'Choose browser'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
 
 # This workflow runs both API tests and page/UI tests in separate jobs
 
@@ -9,13 +27,14 @@ jobs:
     name: Run API Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'api'
 
     strategy:
       matrix:
         # Run tests on Node.js 20 only
         node-version: [20]
-        # Run API tests on Chromium only
-        browser: [chromium]
+        # Use browser from workflow input
+        browser: [${{ github.event.inputs.browser || 'chromium' }}]
       fail-fast: false
 
     steps:
@@ -70,16 +89,17 @@ jobs:
 
   # Job to run page/UI tests with Chrome
   test-ui:
-    name: Run Page Tests with Chrome
+    name: Run Page Tests with ${{ github.event.inputs.browser || 'Chrome' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'ui'
 
     strategy:
       matrix:
         # Run tests on Node.js 20 only
         node-version: [20]
-        # Run tests on Chromium only
-        browser: [chromium]
+        # Use browser from workflow input
+        browser: [${{ github.event.inputs.browser || 'chromium' }}]
       fail-fast: false
 
     steps:
@@ -136,6 +156,7 @@ jobs:
   lint:
     name: Code Quality Check
     runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'lint'
 
     steps:
       - name: Checkout code
@@ -178,7 +199,7 @@ jobs:
   notify:
     name: Notify on Failure
     needs: [test, test-ui, lint]
-    if: failure() && github.event_name == 'push'
+    if: failure() && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
